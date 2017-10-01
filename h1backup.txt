@@ -1,0 +1,2023 @@
+/*
+*
+* By Will Said
+*
+* September 2017
+*
+* Georgia Institute of Technology
+*
+* Takes in an input file of chess moves
+* and prints out the final board positions.
+*
+*/
+
+
+
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.*;
+
+public class PgnReader {
+
+    public static void main(String[] args) {
+
+        //the PGN input file is now this String
+        String game = fileContent(args[0]);
+
+        //Prints out the tag values given in the input
+        System.out.format("Event: %s%n", tagValue("Event", game));
+        System.out.format("Site: %s%n", tagValue("Site", game));
+        System.out.format("Date: %s%n", tagValue("Date", game));
+        System.out.format("Round: %s%n", tagValue("Round", game));
+        System.out.format("White: %s%n", tagValue("White", game));
+        System.out.format("Black: %s%n", tagValue("Black", game));
+        System.out.format("Result: %s%n", tagValue("Result", game));
+
+        //prints out what the board looks like at the end of the game
+        System.out.println("Final Position:");
+        System.out.println(finalPosition(game));
+
+    }
+
+    /**
+     * Find the tagName tag pair in a PGN game and return its value.
+     *
+     * @see http://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm
+     *
+     * @param tagName the name of the tag whose value you want
+     * @param game a `String` containing the PGN text of a chess game
+     * @return the value in the named tag pair
+     */
+
+
+    public static String tagValue(String tagName, String game) {
+        for (int i = 0; i < game.length(); i++) {
+            for (int j = game.length(); j > i; j--) {
+                if (game.substring(i, j).equals(tagName)) {
+                    for (int k = j + 2; k < game.length(); k++) {
+                        if (game.charAt(k) == '\"') {
+                            return game.substring(j + 2, k);
+                        }
+                    }
+                }
+            }
+        }
+        return "NOT GIVEN";
+    }
+
+
+
+    /**
+     * Play out the moves in game and return a String with the game's
+     * final position in Forsyth-Edwards Notation (FEN).
+     *
+     * @see http://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c16.1
+     *
+     * @param game a `String` containing a PGN-formatted chess game or opening
+     * @return the game's final position in FEN.
+     */
+
+
+    public static String finalPosition(String game) {
+
+        char[][] chessBoard = {
+            {'r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'},
+            {'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '},
+            {'P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'},
+            {'R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'}};
+
+        int startOfGame = 0;
+        for (int i = 0; i < game.length(); i++) {
+            if (game.charAt(i) == '1' && game.charAt(i + 1) == '.') {
+                startOfGame = i;
+                break;
+            }
+        }
+        //new string, of the game without tag values
+        String allMovesString = game.substring(startOfGame);
+        //separates string wherever the regular expression " " is
+        String[] movesIncludingMoveNumber = allMovesString.split(" ");
+
+        // for (int i = 0; i < movesIncludingMoveNumber.length; i++) {
+        //     System.out.println(movesIncludingMoveNumber[i]);
+        // }
+
+    /*  Prints
+        1.
+        e4
+        e5
+        2.
+        Nf3
+        Nc6
+        ...        */
+        //Now i will get rid of the move numbers like (1.) and (2.).
+        String movesStringWithSpaces = "";
+        for (int i = 1; i < movesIncludingMoveNumber.length; i++) {
+            if (i % 3 != 0) {
+                movesStringWithSpaces += movesIncludingMoveNumber[i] + " ";
+            }
+        }
+        String[] moves = movesStringWithSpaces.split(" ");
+
+        // for (int i = 0; i < moves.length; i++) {
+        //     System.out.println(moves[i]);
+        // }
+        /* Prints:
+        e4
+        e5
+        Nf3
+        Nc6
+        Bc4
+        Nf6
+        Ng5
+        d5
+        exd5
+        Nxd5
+        Nxf7
+        And now i have what i want: each element in the moves array is a move.
+        */
+
+
+
+        makeTheMoves(chessBoard, moves);
+
+
+
+
+
+        //prints out my chessboard
+        for (int row = 0; row < 8; row++) {
+            for (int column = 0; column < 8; column++) {
+                System.out.print(chessBoard[row][column] + " ");
+            }
+            System.out.println();
+        }
+
+
+        System.out.println();
+        return printFinalPosition(chessBoard);
+
+    }
+
+
+
+
+
+
+
+    public static void makeTheMoves(char[][] chessBoard, String[] moves) {
+        for (int i = 0; i < moves.length; i++) {
+            //PAWNS. example: e4
+            if (moves[i].charAt(0) == 'a' || moves[i].charAt(0) == 'b'
+                    || moves[i].charAt(0) == 'c' || moves[i].charAt(0) == 'd'
+                    || moves[i].charAt(0) == 'e' || moves[i].charAt(0) == 'f'
+                    || moves[i].charAt(0) == 'g' || moves[i].charAt(0) == 'h') {
+
+                if (i % 2 == 0) {  //white's move. true.
+                    movePawn(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    movePawn(chessBoard, moves[i], false);
+                }
+            } else if (moves[i].charAt(0) == 'Q') {
+                //QUEENS. example: QH4
+                if (i % 2 == 0) {  //white's move. true.
+                    moveQueen(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    moveQueen(chessBoard, moves[i], false);
+                }
+            } else if (moves[i].charAt(0) == 'B') {
+                //BISHOPS. example: Bc4
+                if (i % 2 == 0) {  //white's move. true.
+                    moveBishop(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    moveBishop(chessBoard, moves[i], false);
+                }
+            } else if (moves[i].charAt(0) == 'K') {
+                //KINGS. example: KE2
+                if (i % 2 == 0) {  //white's move. true.
+                    moveKing(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    moveKing(chessBoard, moves[i], false);
+                }
+            } else if (moves[i].charAt(0) == 'N') {
+                //KNIGHTS. Nf3, Nxb4
+                if (i % 2 == 0) {  //white's move. true.
+                    moveKnight(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    moveKnight(chessBoard, moves[i], false);
+                }
+            } else if (moves[i].charAt(0) == 'O' || moves[i].charAt(0) == '0') {
+                //castling, O-O-O O-O
+                if (i % 2 == 0) {  //white's move. true.
+                    castle(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    castle(chessBoard, moves[i], false);
+                }
+            } else if (moves[i].charAt(0) == 'R') {
+                //ROOKS. Re8
+                if (i % 2 == 0) {  //white's move. true.
+                    moveRook(chessBoard, moves[i], true);
+                } else if (i % 2 != 0) {
+                    moveRook(chessBoard, moves[i], false);
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+    public static int moveRook(char[][] chessBoard, String move1,
+        boolean white) {
+
+        boolean blank = true;
+        String move = "";
+        int x = move1.indexOf('x');
+
+        if (x > 0) {
+            move = move1.substring(0, x) + move1.substring(x + 1);
+        } else {
+            move = move1;
+        }
+
+
+        //disambiguate
+        //R1e7 or Rae7+ or Ra1e7
+        boolean disambiguates = false;
+        // boolean doubleDisambiguates = false;
+
+        if (move.length() >= 4 && (move.charAt(2) == 'a'
+                || move.charAt(2) == 'b' || move.charAt(2) == 'c'
+                || move.charAt(2) == 'd' || move.charAt(2) == 'e'
+                || move.charAt(2) == 'f' || move.charAt(2) == 'g'
+                || move.charAt(2) == 'h')) {
+            disambiguates = true;
+        }
+
+        if (disambiguates) {
+            if (move.charAt(1) == 'a' || move.charAt(1) == 'b'
+                    || move.charAt(1) == 'c' || move.charAt(1) == 'd'
+                    || move.charAt(1) == 'e' || move.charAt(1) == 'f'
+                    || move.charAt(1) == 'g' || move.charAt(1) == 'h') {
+                //Rae1
+                int arrayRowIndex =
+                    (8 - Character.getNumericValue(move.charAt(3)));
+                int arrayColumnIndex = (move.charAt(2) - 97);
+
+                for (int i = 0; i < 8; i++) {
+                    if (white) {
+                        blank = true;
+                        if (chessBoard[i][move.charAt(1) - 97] == 'R') {
+                            if (arrayColumnIndex > move.charAt(1) - 97) {
+                                for (int j = move.charAt(1) - 97 + 1;
+                                    j < arrayColumnIndex; j++) {
+                                    if (chessBoard[arrayRowIndex][j] != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            } else {
+                                blank = true;
+                                for (int j = arrayColumnIndex - 1;
+                                    j > move.charAt(1) - 97; j--) {
+                                    if (chessBoard[arrayRowIndex][j] != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            }
+                            if (blank) {
+                                chessBoard[i][move.charAt(1) - 97] = ' ';
+                                chessBoard[8 - Character.getNumericValue(
+                                    move.charAt(3))][move.charAt(2) - 97]
+                                     = 'R';
+                                return 0;
+                            }
+                        }
+                    } else {
+                        blank = true;
+                        if (chessBoard[i][move.charAt(1) - 97] == 'r') {
+                            if (arrayColumnIndex > move.charAt(1) - 97) {
+                                for (int j = move.charAt(1) - 97 + 1;
+                                    j < arrayColumnIndex; j++) {
+                                    if (chessBoard[arrayRowIndex][j] != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            } else {
+                                blank = true;
+                                for (int j = arrayColumnIndex - 1;
+                                    j > move.charAt(1) - 97; j--) {
+                                    if (chessBoard[arrayRowIndex][j] != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            }
+                            if (blank) {
+                                chessBoard[i][move.charAt(1) - 97] = ' ';
+                                chessBoard[8 - Character.getNumericValue(
+                                    move.charAt(3))][move.charAt(2) - 97]
+                                     = 'r';
+                                return 0;
+                            }
+                        }
+                    }
+                }
+
+            } else if (move.charAt(1) == '1' || move.charAt(1) == '2'
+                        || move.charAt(1) == '3' || move.charAt(1) == '4'
+                        || move.charAt(1) == '5' || move.charAt(1) == '6'
+                        || move.charAt(1) == '7' || move.charAt(1) == '8') {
+
+                //R1e1
+                int arrayRowIndex = (8 - Character.getNumericValue(
+                                        move.charAt(3)));
+                int arrayColumnIndex = (move.charAt(2) - 97);
+
+                for (int i = 0; i < 8; i++) {
+                    if (white) {
+                        blank = true;
+                        if (chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] == 'R') {
+                            if (8 - Character.getNumericValue(move.charAt(1))
+                                < arrayRowIndex) {
+                                for (int j = 8 - Character.getNumericValue(
+                                    move.charAt(1)) + 1; j < arrayRowIndex;
+                                     j++) {
+                                    if (chessBoard[j][arrayColumnIndex]
+                                        != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            } else {
+                                blank = true;
+                                for (int j = arrayRowIndex - 1;
+                                    j > 8 - Character.getNumericValue(
+                                        move.charAt(1)); j--) {
+                                    if (chessBoard[arrayRowIndex][j] != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            }
+                            if (blank) {
+                                chessBoard[8 - Character.getNumericValue(
+                                    move.charAt(1))][i] = ' ';
+                                chessBoard[8 - Character.getNumericValue(
+                                    move.charAt(3))][move.charAt(2) - 97]
+                                     = 'R';
+                                return 0;
+                            }
+                        }
+                    } else {
+                        blank = true;
+                        if (chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] == 'r') {
+                            if (8 - Character.getNumericValue(move.charAt(1))
+                                < arrayRowIndex) {
+                                for (int j = 8 - Character.getNumericValue(
+                                    move.charAt(1)) + 1; j < arrayRowIndex;
+                                     j++) {
+                                    if (chessBoard[j][arrayColumnIndex] != ' ')
+                                    {
+                                        blank = false;
+                                    }
+                                }
+                            } else {
+                                blank = true;
+                                for (int j = arrayRowIndex - 1;
+                                    j > 8 - Character.getNumericValue(
+                                        move.charAt(1)); j--) {
+                                    if (chessBoard[arrayRowIndex][j] != ' ') {
+                                        blank = false;
+                                    }
+                                }
+                            }
+                            if (blank) {
+                                chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] = ' ';
+                                chessBoard[8 - Character.getNumericValue(
+                                move.charAt(3))][move.charAt(2) - 97] = 'r';
+                                return 0;
+                            }
+                        }
+                    }
+
+                }
+            }
+        //no disambiguation
+        } else {
+            //in Rc3, or Rxc3:
+            // turns the '3' into [5] <- (arrayRowIndex)
+            //  and 'c' into [2] <- (arrayColumnIndex)
+            int arrayRowIndex = 0;
+            int arrayColumnIndex = 0;
+            arrayRowIndex = (8 - Character.getNumericValue(move.charAt(2)));
+            arrayColumnIndex = (move.charAt(1) - 97);
+
+
+            for (int row = 0; row < 8; row++) {
+                for (int column = 0; column < 8; column++) {
+                    if (white) {
+                        if ((chessBoard[row][column] == 'R')
+                                && ((row == arrayRowIndex)
+                                || (column == arrayColumnIndex))) {
+                            if (row == arrayRowIndex) {
+                                if (column < arrayColumnIndex) {
+                                    blank = true;
+                                    for (int i = column + 1;
+                                        i < arrayColumnIndex; i++) {
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'R';
+                                        return 0;
+                                    }
+                                } else {
+                                    blank = true;
+                                    for (int i = column - 1;
+                                        i > arrayColumnIndex; i--) {
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'R';
+                                        return 0;
+                                    }
+                                }
+
+                            } else if (column == arrayColumnIndex) {
+                                blank = true;
+                                if (row < arrayRowIndex) {
+                                    for (int i = row + 1;
+                                        i < arrayRowIndex; i++) {
+                                        if (chessBoard[i][arrayColumnIndex]
+                                            != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'R';
+                                        return 0;
+                                    }
+                                } else {
+                                    blank = true;
+                                    if (row - arrayRowIndex > 0) {
+                                        for (int i = row - 1;
+                                                i > arrayRowIndex;
+                                                i--) {
+                                            if (chessBoard[i][arrayColumnIndex]
+                                                    != ' ') {
+                                                blank = false;
+                                            }
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'R';
+                                        return 0;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if ((chessBoard[row][column] == 'r')
+                                && ((row == arrayRowIndex)
+                                || (column == arrayColumnIndex))) {
+                            if (row == arrayRowIndex) {
+                                if (column < arrayColumnIndex) {
+                                    blank = true;
+                                    for (int i = column + 1;
+                                        i < arrayColumnIndex; i++) {
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'r';
+                                        return 0;
+                                    }
+                                } else {
+                                    blank = true;
+                                    for (int i = column - 1;
+                                        i > arrayColumnIndex; i--) {
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'r';
+                                        return 0;
+                                    }
+                                }
+
+                            } else if (column == arrayColumnIndex) {
+                                blank = true;
+                                if (row < arrayRowIndex) {
+                                    for (int i = row + 1;
+                                        i < arrayRowIndex; i++) {
+                                        if (chessBoard[i][arrayColumnIndex]
+                                            != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(column - arrayColumnIndex)
+                                        <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'r';
+                                        return 0;
+                                    }
+                                } else {
+                                    blank = true;
+                                    for (int i = row - 1;
+                                            i > arrayRowIndex; i--) {
+                                        if (chessBoard[i][arrayColumnIndex]
+                                                != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(column - arrayColumnIndex)
+                                        <= 1) {
+                                            blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'r';
+                                        return 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+    public static void castle(char[][] chessBoard, String move, boolean white) {
+        boolean queenSide = false;
+        if (move.contains("O-O-O") || move.contains("0-0-0")) {
+            queenSide = true;
+        }
+
+        if (queenSide) {
+            if (white) {
+                chessBoard[7][2] = 'K';
+                chessBoard[7][3] = 'R';
+                chessBoard[7][4] = ' ';
+                chessBoard[7][0] = ' ';
+            } else {  //blacks
+                chessBoard[0][2] = 'k';
+                chessBoard[0][3] = 'r';
+                chessBoard[0][4] = ' ';
+                chessBoard[0][0] = ' ';
+            }
+        } else { //king side castle
+            if (white) {
+                chessBoard[7][6] = 'K';
+                chessBoard[7][5] = 'R';
+                chessBoard[7][4] = ' ';
+                chessBoard[7][7] = ' ';
+            } else {  //blacks
+                chessBoard[0][6] = 'k';
+                chessBoard[0][5] = 'r';
+                chessBoard[0][4] = ' ';
+                chessBoard[0][7] = ' ';
+            }
+        }
+    }
+
+
+
+
+
+
+
+    public static void moveKnight(char[][] chessBoard, String move,
+        boolean white) {
+
+        boolean hasX = false;
+        if (move.contains("x")) {
+            hasX = true;
+        }
+
+
+
+        boolean ambiguous = false;
+        //check for DISAMBIGUATION
+        //
+        if (hasX && (move.length() >= 5) && (move.charAt(1) == 'a'
+                    || move.charAt(1) == 'b' || move.charAt(1) == 'c'
+                    || move.charAt(1) == 'd' || move.charAt(1) == 'e'
+                    || move.charAt(1) == 'f' || move.charAt(1) == 'g'
+                    || move.charAt(1) == 'h')) {
+            // example: Nbxd7
+            ambiguous = true;
+            if (white) {
+                for (int i = 0; i < 8; i++) {
+                    if (chessBoard[i][move.charAt(1) - 97] == 'N') {
+                        chessBoard[i][move.charAt(1) - 97] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(4))][move.charAt(3) - 97] = 'N';
+                    }
+                }
+            } else {
+                for (int i = 0; i < 8; i++) {
+                    if (chessBoard[i][move.charAt(1) - 97] == 'n') {
+                        chessBoard[i][move.charAt(1) - 97] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(4))][move.charAt(3) - 97] = 'n';
+                    }
+                }
+            }
+        } else if (hasX && (move.length() >= 5) && (move.charAt(1) == '1'
+                    || move.charAt(1) == '2' || move.charAt(1) == '3'
+                    || move.charAt(1) == '4' move.charAt(1) == '5'
+                    || move.charAt(1) == '6' || move.charAt(1) == '7'
+                    || move.charAt(1) == '8')) {
+            //N1xc2
+            ambiguous = true;
+            for (int i = 0; i < 8; i++) {
+                if (white) {
+                    if (chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] == 'N') {
+                        chessBoard[8 - Character.getNumericValue(
+                           move.charAt(1))][i] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                               move.charAt(4))][move.charAt(3) - 97] = 'N';
+                    }
+                } else {
+                    if (chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] == 'n') {
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(4))][move.charAt(3) - 97] = 'n';
+                    }
+                }
+            }
+        } else if (!hasX && (move.length() >= 4)
+                    && (move.charAt(1) == '1' || move.charAt(1) == '2'
+                    || move.charAt(1) == '3' || move.charAt(1) == '4'
+                    || move.charAt(1) == '5' || move.charAt(1) == '6'
+                    || move.charAt(1) == '7' || move.charAt(1) == '8')) {
+            //N1c2
+            ambiguous = true;
+            for (int i = 0; i < 8; i++) {
+                if (white) {
+                    if (chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] == 'N') {
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'N';
+                    }
+                } else {
+                    if (chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] == 'n') {
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(1))][i] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'n';
+                    }
+                }
+            }
+        } else if (!(hasX) && (move.length() >= 4)
+                    && (move.charAt(1) == 'a' || move.charAt(1) == 'b'
+                    || move.charAt(1) == 'c' || move.charAt(1) == 'd'
+                    || move.charAt(1) == 'e' || move.charAt(1) == 'f'
+                    || move.charAt(1) == 'g' || move.charAt(1) == 'h')) {
+            //Nbd7
+            ambiguous = true;
+            if (white) {
+                for (int i = 0; i < 8; i++) {
+                    if (chessBoard[i][move.charAt(1) - 97] == 'N') {
+                        chessBoard[i][move.charAt(1) - 97] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97]
+                                = 'N';
+                    }
+                }
+            } else {
+                for (int i = 0; i < 8; i++) {
+                    if (chessBoard[i][move.charAt(1) - 97] == 'n') {
+                        chessBoard[i][move.charAt(1) - 97] = ' ';
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97]
+                                = 'n';
+                    }
+                }
+            }
+        } else {  //no disambiguations. Nxf2. Row = 2, column = 5
+
+
+
+            //in Nc3, or Nxc3, turns the '3' into [5] and 'c' into [2]
+            int arrayRowIndex, arrayColumnIndex;
+            if (hasX) {
+                arrayRowIndex = 8 - Character.getNumericValue(move.charAt(3));
+                arrayColumnIndex = move.charAt(2) - 97;
+            } else {
+                arrayRowIndex = 8 - Character.getNumericValue(move.charAt(2));
+                arrayColumnIndex = move.charAt(1) - 97;
+            }
+
+
+            int oldRow, oldColumn;
+            if (white) {
+                if (arrayRowIndex + 2 <= 7 && arrayColumnIndex - 1 >= 0
+                    && chessBoard[arrayRowIndex + 2][arrayColumnIndex - 1]
+                            == 'N') {
+                    chessBoard[arrayRowIndex + 2][arrayColumnIndex - 1] = ' ';
+                } else if (arrayRowIndex + 2 <= 7
+                        && arrayColumnIndex + 1 <= 7
+                        && chessBoard[arrayRowIndex + 2][arrayColumnIndex + 1]
+                                == 'N') {
+                    chessBoard[arrayRowIndex + 2][arrayColumnIndex + 1] = ' ';
+                } else if (arrayRowIndex - 2 >= 0 && arrayColumnIndex - 1 >= 0
+                        && chessBoard[arrayRowIndex - 2][arrayColumnIndex - 1]
+                            == 'N') {
+                    chessBoard[arrayRowIndex - 2][arrayColumnIndex - 1] = ' ';
+                } else if (arrayRowIndex - 2 >= 0 && arrayColumnIndex + 1 <= 7
+                        && chessBoard[arrayRowIndex - 2][arrayColumnIndex + 1]
+                            == 'N') {
+                    chessBoard[arrayRowIndex - 2][arrayColumnIndex + 1] = ' ';
+                } else if (arrayRowIndex + 1 <= 7 && arrayColumnIndex - 2 >= 0
+                        && chessBoard[arrayRowIndex + 1][arrayColumnIndex - 2]
+                            == 'N') {
+                    chessBoard[arrayRowIndex + 1][arrayColumnIndex - 2] = ' ';
+                } else if (arrayRowIndex + 1 <= 7 && arrayColumnIndex + 2 <= 7
+                        && chessBoard[arrayRowIndex + 1][arrayColumnIndex + 2]
+                            == 'N') {
+                    chessBoard[arrayRowIndex + 1][arrayColumnIndex + 2] = ' ';
+                } else if (arrayRowIndex - 1 >= 0 && arrayColumnIndex - 2 >= 0
+                    && chessBoard[arrayRowIndex - 1][arrayColumnIndex - 2]
+                            == 'N') {
+                    chessBoard[arrayRowIndex - 1][arrayColumnIndex - 2] = ' ';
+                } else if (arrayRowIndex - 1 >= 0 && arrayColumnIndex + 2 <= 7
+                    && chessBoard[arrayRowIndex - 1][arrayColumnIndex + 2]
+                            == 'N') {
+                    chessBoard[arrayRowIndex - 1][arrayColumnIndex + 2] = ' ';
+                }
+            } else {  //blacks move
+                if (arrayRowIndex + 2 <= 7 && arrayColumnIndex - 1 >= 0
+                    && chessBoard[arrayRowIndex + 2][arrayColumnIndex - 1]
+                            == 'n') {
+                    chessBoard[arrayRowIndex + 2][arrayColumnIndex - 1] = ' ';
+                } else if (arrayRowIndex + 2 <= 7 && arrayColumnIndex + 1 <= 7
+                    && chessBoard[arrayRowIndex + 2][arrayColumnIndex + 1]
+                            == 'n') {
+                    chessBoard[arrayRowIndex + 2][arrayColumnIndex + 1] = ' ';
+                } else if (arrayRowIndex - 2 >= 0 && arrayColumnIndex - 1 >= 0
+                    && chessBoard[arrayRowIndex - 2][arrayColumnIndex - 1]
+                        == 'n') {
+                    chessBoard[arrayRowIndex - 2][arrayColumnIndex - 1] = ' ';
+                } else if (arrayRowIndex - 2 >= 0 && arrayColumnIndex + 1 <= 8
+                    && chessBoard[arrayRowIndex - 2][arrayColumnIndex + 1]
+                            == 'n') {
+                    chessBoard[arrayRowIndex - 2][arrayColumnIndex + 1] = ' ';
+                } else if (arrayRowIndex + 1 <= 7 && arrayColumnIndex - 2 >= 0
+                    && chessBoard[arrayRowIndex + 1][arrayColumnIndex - 2]
+                            == 'n') {
+                    chessBoard[arrayRowIndex + 1][arrayColumnIndex - 2] = ' ';
+                } else if (arrayRowIndex + 1 <= 7
+                    && arrayColumnIndex + 2 <= 7
+                    && chessBoard[arrayRowIndex + 1][arrayColumnIndex + 2]
+                        == 'n') {
+                    chessBoard[arrayRowIndex + 1][arrayColumnIndex + 2] = ' ';
+                } else if (arrayRowIndex - 1 >= 0
+                        && arrayColumnIndex - 2 >= 0
+                        && chessBoard[arrayRowIndex - 1][arrayColumnIndex - 2]
+                            == 'n') {
+                    chessBoard[arrayRowIndex - 1][arrayColumnIndex - 2] = ' ';
+                } else if (arrayRowIndex - 1 >= 0
+                        && arrayColumnIndex + 2 <= 7
+                        && chessBoard[arrayRowIndex - 1]
+                            [arrayColumnIndex + 2] == 'n') {
+                    chessBoard[arrayRowIndex - 1][arrayColumnIndex + 2] = ' ';
+                }
+            }
+
+            if (white) {
+                chessBoard[arrayRowIndex][arrayColumnIndex] = 'N';
+            } else {
+                chessBoard[arrayRowIndex][arrayColumnIndex] = 'n';
+            }
+        }
+    }
+
+
+
+
+
+
+
+    public static void moveKing(char[][] chessBoard, String move,
+            boolean white) {
+
+        //check for captures
+        boolean hasX = false;
+        if (move.charAt(1) == 'x') {
+            hasX = true;
+        }
+
+        for (int row = 0; row < 8; row++) {
+            for (int column = 0; column < 8; column++) {
+                if (white) {
+                    if (chessBoard[row][column] == 'K') {
+                        chessBoard[row][column] = ' ';
+                        if (hasX) {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(3))][move.charAt(2) - 97] = 'K';
+                        } else {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(2))][move.charAt(1) - 97] = 'K';
+                        }
+                    }
+                } else {
+                    if (chessBoard[row][column] == 'k') {
+                        chessBoard[row][column] = ' ';
+                        if (hasX) {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(3))][move.charAt(2) - 97] = 'k';
+                        } else {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(2))][move.charAt(1) - 97] = 'k';
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+    public static int moveBishop(char[][] chessBoard, String move1,
+            boolean white) {
+
+        //gets rid of 'x'
+        String move = "";
+        int x = move1.indexOf('x');
+        if (x > 0) {
+            move = move1.substring(0, x) + move1.substring(x + 1);
+        } else {
+            move = move1;
+        }
+
+
+        //disambiguate
+        //Bae1 or B1e1
+        boolean disambiguates = false;
+        boolean doubleDisambiguates = false;
+
+        if (move.length() >= 4 && (move.charAt(2) == 'a'
+                || move.charAt(2) == 'b' || move.charAt(2) == 'c'
+                || move.charAt(2) == 'd' || move.charAt(2) == 'e'
+                || move.charAt(2) == 'f' || move.charAt(2) == 'g'
+                || move.charAt(2) == 'h')) {
+            disambiguates = true;
+        } else if (move.length() >= 5 && (move.charAt(2) == '1'
+                || move.charAt(2) == '2' || move.charAt(2) == '3'
+                || move.charAt(2) == '4' || move.charAt(2) == '5'
+                || move.charAt(2) == '6' || move.charAt(2) == '7'
+                || move.charAt(2) == '8')) {
+            doubleDisambiguates = true;
+        }
+
+        //Ba4b5
+        if (doubleDisambiguates) {
+            chessBoard[8 - Character.getNumericValue(move.charAt(2))]
+                [move.charAt(1) - 97] = ' ';
+            if (white) {
+                chessBoard[8 - Character.getNumericValue(move.charAt(4))]
+                    [move.charAt(3) - 97] = 'B';
+            } else {
+                chessBoard[8 - Character.getNumericValue(move.charAt(4))]
+                    [move.charAt(3) - 97] = 'b';
+            }
+        }
+        if (disambiguates) {
+            //Bga4
+            if (move.charAt(1) == 'a' || move.charAt(1) == 'b'
+                    || move.charAt(1) == 'c' || move.charAt(1) == 'd'
+                    || move.charAt(1) == 'e' || move.charAt(1) == 'f'
+                    || move.charAt(1) == 'g' || move.charAt(1) == 'h') {
+                        //checks like a rook
+
+                for (int i = 0; i < 8; i++) {
+                    if (white) {
+                        if (chessBoard[i][move.charAt(1) - 97] == 'B') {
+                            chessBoard[i][move.charAt(1) - 97] = ' ';
+                        }
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'B';
+                    } else {
+                        if (chessBoard[i][move.charAt(1) - 97] == 'b') {
+                            chessBoard[i][move.charAt(1) - 97] = ' ';
+                        }
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'b';
+                    }
+                }
+            } else if (move.charAt(1) == '1' || move.charAt(1) == '2'
+                        || move.charAt(1) == '3' || move.charAt(1) == '4'
+                        || move.charAt(1) == '5' || move.charAt(1) == '6'
+                        || move.charAt(1) == '7' || move.charAt(1) == '8') {
+
+                //B1e1
+                for (int i = 0; i < 8; i++) {
+                    if (white) {
+                        if (chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] == 'B') {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] = ' ';
+                        }
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'B';
+                    } else {
+                        if (chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] == 'b') {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] = ' ';
+                        }
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'b';
+                    }
+
+                }
+
+            }
+        //no disambiguation
+        } else {
+            int arrayRowIndex, arrayColumnIndex;
+            arrayRowIndex = 8 - Character.getNumericValue(move.charAt(2));
+            arrayColumnIndex = move.charAt(1) - 97;
+
+            int oldBishopRow, oldBishopColumn;
+            boolean allBlanks = true;
+            // String direction = "";
+            for (int row = 0; row < 8; row++) {
+                for (int column = 0; column < 8; column++) {
+                    if (white) {
+                        if (row == column) {
+                            if (arrayRowIndex >= row
+                                    && arrayColumnIndex >= column
+                                    && chessBoard[arrayRowIndex - row]
+                                        [arrayColumnIndex - column] == 'B') {
+                                oldBishopRow = arrayRowIndex - row;
+                                oldBishopColumn = arrayColumnIndex - column;
+                                //direction += "downright";
+                                //bishop moved down right
+                                for  (int r = oldBishopRow + 1,
+                                        c = oldBishopColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex]
+                                        [arrayColumnIndex] = 'B';
+                                    chessBoard[oldBishopRow][oldBishopColumn]
+                                        = ' ';
+                                    return 0;
+                                }
+                            } else if ((arrayRowIndex + row <= 7)
+                                        && (arrayColumnIndex + column <= 7)
+                                        && chessBoard[arrayRowIndex + row]
+                                            [arrayColumnIndex + column]
+                                                == 'B') {
+                                oldBishopRow = arrayRowIndex + row;
+                                oldBishopColumn = arrayColumnIndex + column;
+                                //direction += "up left";
+                                allBlanks = true;
+                                for  (int r = oldBishopRow - 1,
+                                        c = oldBishopColumn - 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex]
+                                        [arrayColumnIndex] = 'B';
+                                    chessBoard[oldBishopRow]
+                                        [oldBishopColumn] = ' ';
+                                    return 0;
+                                }
+                            } else if ((arrayRowIndex + row <= 7)
+                                        && arrayColumnIndex >= column
+                                        && chessBoard[arrayRowIndex + row]
+                                            [arrayColumnIndex - column]
+                                                == 'B') {
+                                oldBishopRow = arrayRowIndex + row;
+                                oldBishopColumn = arrayColumnIndex - column;
+                                //direction += "up right";
+                                allBlanks = true;
+                                for (int r = oldBishopRow - 1,
+                                        c = oldBishopColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex]
+                                        [arrayColumnIndex] = 'B';
+                                    chessBoard[oldBishopRow]
+                                        [oldBishopColumn] = ' ';
+                                    return 0;
+                                }
+                            } else if (arrayRowIndex >= row
+                                    && (arrayColumnIndex + column <= 7)
+                                    && chessBoard[arrayRowIndex - row]
+                                        [arrayColumnIndex + column] == 'B') {
+                                oldBishopRow = arrayRowIndex - row;
+                                oldBishopColumn = arrayColumnIndex + column;
+                                //direction += "down left";
+                                allBlanks = true;
+                                for (int r = oldBishopRow + 1,
+                                    c = oldBishopColumn - 1;
+                                    r < Math.abs(arrayRowIndex - row);
+                                    r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'B';
+                                    chessBoard[oldBishopRow][oldBishopColumn]
+                                        = ' ';
+                                    return 0;
+                                }
+                            }
+                        }
+
+
+
+                    } else { //black
+                        if (row == column) {
+                            if (arrayRowIndex >= row
+                                    && arrayColumnIndex >= column
+                                    && chessBoard[arrayRowIndex - row]
+                                        [arrayColumnIndex - column] == 'b') {
+                                oldBishopRow = arrayRowIndex - row;
+                                oldBishopColumn = arrayColumnIndex - column;
+                                for  (int r = oldBishopRow + 1,
+                                        c = oldBishopColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'b';
+                                    chessBoard[oldBishopRow][oldBishopColumn]
+                                        = ' ';
+                                    return 0;
+                                }
+                            } else if ((arrayRowIndex + row <= 7)
+                                    && (arrayColumnIndex + column <= 7)
+                                    && chessBoard[arrayRowIndex + row]
+                                        [arrayColumnIndex + column] == 'b') {
+                                oldBishopRow = arrayRowIndex + row;
+                                oldBishopColumn = arrayColumnIndex + column;
+                                allBlanks = true;
+                                for  (int r = oldBishopRow - 1,
+                                        c = oldBishopColumn - 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex]
+                                        [arrayColumnIndex] = 'b';
+                                    chessBoard[oldBishopRow]
+                                        [oldBishopColumn] = ' ';
+                                    return 0;
+                                }
+                            } else if ((arrayRowIndex + row <= 7)
+                                    && arrayColumnIndex >= column
+                                    && chessBoard[arrayRowIndex + row]
+                                        [arrayColumnIndex - column] == 'b') {
+                                oldBishopRow = arrayRowIndex + row;
+                                oldBishopColumn = arrayColumnIndex - column;
+                                //direction += "up right";
+                                allBlanks = true;
+                                for  (int r = oldBishopRow - 1,
+                                        c = oldBishopColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'b';
+                                    chessBoard[oldBishopRow][oldBishopColumn]
+                                        = ' ';
+                                    return 0;
+                                }
+                            } else if (arrayRowIndex >= row
+                                    && (arrayColumnIndex + column <= 7)
+                                    && chessBoard[arrayRowIndex - row]
+                                        [arrayColumnIndex + column] == 'b') {
+
+                                oldBishopRow = arrayRowIndex - row;
+                                oldBishopColumn = arrayColumnIndex + column;
+                                //direction += "down left";
+                                allBlanks = true;
+                                for  (int r = oldBishopRow + 1,
+                                        c = oldBishopColumn - 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'b';
+                                    chessBoard[oldBishopRow][oldBishopColumn]
+                                        = ' ';
+                                    return 0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //checks light vs dark squares
+        //
+        //notes index, such as [4][1], to just 41
+        // boolean hasX = false;
+        // String arrayIndex = "";
+        // if (move.charAt(1) == 'x') {
+        //     arrayIndex += (8 - Character.getNumericValue(move.charAt(3)));
+        //     arrayIndex += (move.charAt(2) - 97);
+        //     hasX = true;
+        // }
+        // else {
+        //     arrayIndex += (8 - Character.getNumericValue(move.charAt(2)));
+        //     arrayIndex += (move.charAt(1) - 97);
+        // }
+        // //check if light or dark square bishop
+        // boolean light = false;
+        // if ((arrayIndex.charAt(0) % 2) == (arrayIndex.charAt(1) % 2)) {
+        //     light = true;
+        // }
+        //
+
+        return -1;
+    }
+
+
+
+
+
+
+
+    public static int moveQueen(char[][] chessBoard, String move1,
+            boolean white) {
+        // Qa1, Qxa1, Qaxa1, Q1xa1, Qa2xa1
+
+        //gets rid of 'x'
+        String move = "";
+        int x = move1.indexOf('x');
+        if (x > 0) {
+            move = move1.substring(0, x) + move1.substring(x + 1);
+        } else {
+            move = move1;
+        }
+        int y = move.indexOf('+');
+        if (y > 0) {
+            move = move.substring(0, y);
+        }
+
+        //disambiguate
+        //Qae1 or Q1e1
+        boolean disambiguates = false;
+        boolean doubleDisambiguates = false;
+
+        if (move.length() >= 4 && (move.charAt(2) == 'a'
+                || move.charAt(2) == 'b' || move.charAt(2) == 'c'
+                || move.charAt(2) == 'd' || move.charAt(2) == 'e'
+                || move.charAt(2) == 'f' || move.charAt(2) == 'g'
+                || move.charAt(2) == 'h')) {
+
+            disambiguates = true;
+
+        } else if ((move.length() >= 5) && (move.charAt(2) == '1'
+                    || move.charAt(2) == '2' || move.charAt(2) == '3'
+                    || move.charAt(2) == '4' || move.charAt(2) == '5'
+                    || move.charAt(2) == '6' || move.charAt(2) == '7'
+                    || move.charAt(2) == '8')) {
+
+            doubleDisambiguates = true;
+
+        }
+
+
+        if (doubleDisambiguates) {
+            //Qa4b5
+            chessBoard[8 - Character.getNumericValue(move.charAt(2))]
+                        [move.charAt(1) - 97] = ' ';
+            if (white) {
+                chessBoard[8 - Character.getNumericValue(move.charAt(4))]
+                        [move.charAt(3) - 97] = 'Q';
+            } else {
+                chessBoard[8 - Character.getNumericValue(move.charAt(4))]
+                        [move.charAt(3) - 97] = 'q';
+            }
+        } else if (disambiguates) {
+            //Qga4
+            boolean allBlanks = true;
+            boolean blank = true;
+
+            if (move.charAt(1) == 'a' || move.charAt(1) == 'b'
+                    || move.charAt(1) == 'c' || move.charAt(1) == 'd'
+                    || move.charAt(1) == 'e' || move.charAt(1) == 'f'
+                    || move.charAt(1) == 'g' || move.charAt(1) == 'h') {
+
+                //checks like a rook.
+                //But we already know the column it's coming from.
+
+                int arrayRowIndex = 8 - Character.getNumericValue(
+                        move.charAt(3));
+                int arrayColumnIndex = move.charAt(2) - 97;
+                int oldQueenColumn = move.charAt(1) - 97;
+                int oldQueenRow;
+
+                for (int i = 0; i < 8; i++) {
+                    if (white) {
+                        if (chessBoard[i][oldQueenColumn] == 'Q') {
+                            //check for pieces in the way - like bishop
+                            chessBoard[i][oldQueenColumn] = ' ';
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(3))][move.charAt(2) - 97] = 'Q';
+                        }
+                    } else {
+                        if (chessBoard[i][move.charAt(1) - 97] == 'q') {
+                            chessBoard[i][move.charAt(1) - 97] = ' ';
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(3))][move.charAt(2) - 97] = 'q';
+                        }
+                    }
+                }
+            } else if (move.charAt(1) == '1' || move.charAt(1) == '2'
+                        || move.charAt(1) == '3' || move.charAt(1) == '4'
+                        || move.charAt(1) == '5' || move.charAt(1) == '6'
+                        || move.charAt(1) == '7' || move.charAt(1) == '8') {
+
+                //Q1e1
+                for (int i = 0; i < 8; i++) {
+                    if (white) {
+                        if (chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] == 'Q') {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] = ' ';
+                        }
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'Q';
+                    } else {
+                        if (chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] == 'q') {
+                            chessBoard[8 - Character.getNumericValue(
+                                move.charAt(1))][i] = ' ';
+                        }
+                        chessBoard[8 - Character.getNumericValue(
+                            move.charAt(3))][move.charAt(2) - 97] = 'q';
+                    }
+                }
+            }
+        } else {
+
+            //no disambiguation Qa2
+
+            int arrayRowIndex, arrayColumnIndex;
+            arrayRowIndex = 8 - Character.getNumericValue(move.charAt(2));
+            arrayColumnIndex = move.charAt(1) - 97;
+
+            int oldQueenRow, oldQueenColumn;
+            boolean allBlanks = true;
+            boolean blank = true;
+
+            for (int row = 0; row < 8; row++) {
+                for (int column = 0; column < 8; column++) {
+                    if (white) {
+                        if (row == column) {
+                            if (arrayRowIndex >= row
+                                    && arrayColumnIndex >= column
+                                    && chessBoard[arrayRowIndex - row]
+                                        [arrayColumnIndex - column]
+                                            == 'Q') {
+
+                                oldQueenRow = arrayRowIndex - row;
+                                oldQueenColumn = arrayColumnIndex - column;
+
+                                for  (int r = oldQueenRow + 1,
+                                        c = oldQueenColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'Q';
+                                    chessBoard[oldQueenRow][oldQueenColumn]
+                                        = ' ';
+
+                                    return 0;
+                                }
+
+                            } else if ((arrayRowIndex + row <= 7)
+                                        && (arrayColumnIndex + column <= 7)
+                                        && chessBoard[arrayRowIndex + row]
+                                                [arrayColumnIndex + column]
+                                                    == 'Q') {
+                                oldQueenRow = arrayRowIndex + row;
+                                oldQueenColumn = arrayColumnIndex + column;
+
+                                allBlanks = true;
+                                for  (int r = oldQueenRow - 1,
+                                    c = oldQueenColumn - 1;
+                                    r < Math.abs(arrayRowIndex - row);
+                                    r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'Q';
+                                    chessBoard[oldQueenRow][oldQueenColumn]
+                                        = ' ';
+
+                                    return 0;
+                                }
+
+                            } else if ((arrayRowIndex + row <= 7)
+                                        && arrayColumnIndex >= column
+                                        && chessBoard[arrayRowIndex + row]
+                                                [arrayColumnIndex - column]
+                                                    == 'Q') {
+
+                                oldQueenRow = arrayRowIndex + row;
+                                oldQueenColumn = arrayColumnIndex - column;
+                                allBlanks = true;
+
+                                for (int r = oldQueenRow - 1,
+                                        c = oldQueenColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                            = 'Q';
+                                    chessBoard[oldQueenRow][oldQueenColumn]
+                                            = ' ';
+
+                                    return 0;
+                                }
+
+                            } else if (arrayRowIndex >= row
+                                        && (arrayColumnIndex + column <= 7)
+                                        && chessBoard[arrayRowIndex - row]
+                                            [arrayColumnIndex + column]
+                                                == 'Q') {
+
+                                oldQueenRow = arrayRowIndex - row;
+                                oldQueenColumn = arrayColumnIndex + column;
+                                allBlanks = true;
+
+                                for  (int r = oldQueenRow + 1,
+                                        c = oldQueenColumn - 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'Q';
+                                    chessBoard[oldQueenRow][oldQueenColumn]
+                                        = ' ';
+
+                                    return 0;
+                                }
+                            }
+                        }
+
+                        //checks like rook
+                        if ((chessBoard[row][column] == 'Q')
+                                && ((row == arrayRowIndex)
+                                || (column == arrayColumnIndex))) {
+
+                            if (row == arrayRowIndex) {
+
+                                if (column < arrayColumnIndex) {
+
+                                    blank = true;
+                                    for (int i = column + 1;
+                                                i < arrayColumnIndex; i++) {
+
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'Q';
+
+                                        return 0;
+                                    }
+                                } else {
+
+                                    blank = true;
+                                    for (int i = column - 1;
+                                            i > arrayColumnIndex; i--) {
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'Q';
+                                        return 0;
+                                    }
+                                }
+
+                            } else if (column == arrayColumnIndex) {
+                                blank = true;
+                                if (row < arrayRowIndex) {
+                                    for (int i = row + 1;
+                                            i < arrayRowIndex; i++) {
+                                        if (chessBoard[i][arrayColumnIndex]
+                                                != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'Q';
+                                        return 0;
+                                    }
+                                } else {
+                                    blank = true;
+                                    if (row - arrayRowIndex > 0) {
+                                        for (int i = row - 1;
+                                                i > arrayRowIndex; i--) {
+                                            if (chessBoard[i][arrayColumnIndex]
+                                                    != ' ') {
+                                                blank = false;
+                                            }
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'Q';
+
+                                        return 0;
+                                    }
+                                }
+                            }
+                        }
+                    } else { //black
+
+                        //checks like bishop
+
+                        if (row == column) {
+                            if (arrayRowIndex >= row
+                                    && arrayColumnIndex >= column
+                                    && chessBoard[arrayRowIndex - row]
+                                            [arrayColumnIndex - column]
+                                                == 'q') {
+                                oldQueenRow = arrayRowIndex - row;
+                                oldQueenColumn = arrayColumnIndex - column;
+
+                                for  (int r = oldQueenRow + 1,
+                                        c = oldQueenColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'q';
+                                    chessBoard[oldQueenRow][oldQueenColumn]
+                                        = ' ';
+
+                                    return 0;
+                                }
+
+                            } else if ((arrayRowIndex + row <= 7)
+                                        && (arrayColumnIndex + column <= 7)
+                                        && chessBoard[arrayRowIndex + row]
+                                            [arrayColumnIndex + column]
+                                                == 'q') {
+
+                                oldQueenRow = arrayRowIndex + row;
+                                oldQueenColumn = arrayColumnIndex + column;
+                                allBlanks = true;
+
+                                for  (int r = oldQueenRow - 1,
+                                        c = oldQueenColumn - 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex][arrayColumnIndex]
+                                        = 'q';
+                                    chessBoard[oldQueenRow][oldQueenColumn]
+                                        = ' ';
+
+                                    return 0;
+                                }
+                            } else if ((arrayRowIndex + row <= 7)
+                                        && arrayColumnIndex >= column
+                                        && chessBoard[arrayRowIndex + row]
+                                                [arrayColumnIndex - column]
+                                                    == 'q') {
+
+                                oldQueenRow = arrayRowIndex + row;
+                                oldQueenColumn = arrayColumnIndex - column;
+
+                                allBlanks = true;
+                                for  (int r = oldQueenRow - 1,
+                                        c = oldQueenColumn + 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex]
+                                        [arrayColumnIndex] = 'q';
+                                    chessBoard[oldQueenRow]
+                                        [oldQueenColumn] = ' ';
+
+                                    return 0;
+                                }
+
+                            } else if (arrayRowIndex >= row
+                                        && (arrayColumnIndex + column <= 7)
+                                        && chessBoard[arrayRowIndex - row]
+                                            [arrayColumnIndex + column]
+                                                == 'q') {
+
+                                oldQueenRow = arrayRowIndex - row;
+                                oldQueenColumn = arrayColumnIndex + column;
+
+                                allBlanks = true;
+                                for  (int r = oldQueenRow + 1,
+                                        c = oldQueenColumn - 1;
+                                        r < Math.abs(arrayRowIndex - row);
+                                        r++, c++) {
+
+                                    if (chessBoard[r][c] != ' ') {
+                                        allBlanks = false;
+                                    }
+                                }
+                                if (allBlanks) {
+                                    chessBoard[arrayRowIndex]
+                                        [arrayColumnIndex] = 'q';
+                                    chessBoard[oldQueenRow]
+                                        [oldQueenColumn] = ' ';
+
+                                    return 0;
+                                }
+                            }
+                        }
+
+
+                        //checks like rook
+                        if ((chessBoard[row][column] == 'q')
+                                && ((row == arrayRowIndex)
+                                || (column == arrayColumnIndex))) {
+
+                            if (row == arrayRowIndex) {
+                                if (column < arrayColumnIndex) {
+                                    blank = true;
+
+                                    for (int i = column + 1;
+                                            i < arrayColumnIndex; i++) {
+
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'q';
+                                        return 0;
+                                    }
+                                } else {
+                                    blank = true;
+                                    for (int i = column - 1;
+                                            i > arrayColumnIndex; i--) {
+
+                                        if (chessBoard[row][i] != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+
+                                    if (Math.abs(row - arrayRowIndex) <= 1) {
+                                        blank = true;
+                                    }
+
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'q';
+                                        return 0;
+                                    }
+                                }
+
+                            } else if (column == arrayColumnIndex) {
+                                blank = true;
+                                if (row < arrayRowIndex) {
+                                    for (int i = row + 1;
+                                            i < arrayRowIndex; i++) {
+
+                                        if (chessBoard[i][arrayColumnIndex]
+                                                != ' ') {
+
+                                            blank = false;
+                                        }
+                                    }
+
+                                    if (Math.abs(column - arrayColumnIndex)
+                                            <= 1) {
+                                        blank = true;
+                                    }
+
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'q';
+
+                                        return 0;
+                                    }
+
+                                } else {
+
+                                    blank = true;
+                                    for (int i = row - 1; i > arrayRowIndex;
+                                            i--) {
+
+                                        if (chessBoard[i][arrayColumnIndex]
+                                                != ' ') {
+                                            blank = false;
+                                        }
+                                    }
+
+                                    if (Math.abs(column - arrayColumnIndex)
+                                            <= 1) {
+                                        blank = true;
+                                    }
+
+                                    if (blank) {
+                                        chessBoard[row][column] = ' ';
+                                        chessBoard[arrayRowIndex]
+                                            [arrayColumnIndex] = 'q';
+
+                                        return 0;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+
+
+
+
+
+
+
+    public static void movePawn(char[][] chessBoard, String move,
+                boolean white) {
+
+
+        boolean hasX = false;
+        if (move.contains("x")) {
+            hasX = true;
+        }
+
+        //in c3, or dxc3:
+        // turns the '3' into [5] <- (arrayRowIndex)
+        //  and 'c' into [2] <- (arrayColumnIndex)
+        int arrayRowIndex = 0;
+        int arrayColumnIndex = 0;
+
+        if (hasX) {
+            arrayRowIndex = (8 - Character.getNumericValue(move.charAt(3)));
+            arrayColumnIndex = (move.charAt(2) - 97);
+        } else {
+            arrayRowIndex = (8 - Character.getNumericValue(move.charAt(1)));
+            arrayColumnIndex = (move.charAt(0) - 97);
+        }
+
+
+
+
+        //  EN PASSANT
+        // exd6e.p.
+        //
+        if (chessBoard[arrayRowIndex][arrayColumnIndex] == ' '
+            && (move.charAt(1) == 'x')) {
+            if (white) {
+                chessBoard[arrayRowIndex + 1][arrayColumnIndex] = ' ';
+            } else {
+                chessBoard[arrayRowIndex - 1][arrayColumnIndex] = ' ';
+            }
+        }
+
+        if ((move.length() >= 3) && (move.charAt(2) == 'Q'
+                || move.charAt(2) == 'R' || move.charAt(2) == 'B'
+                || move.charAt(2) == 'N')) {
+
+                //PAWN PROMOTIONS
+                //d8Q, f8N, b1=B, hxg1R are pawn promotions
+                //
+                //d8Q or f8N
+            if (white) {
+                chessBoard[arrayRowIndex + 1][arrayColumnIndex] = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex] = move.charAt(2);
+            } else { //black
+                chessBoard[arrayRowIndex - 1][arrayColumnIndex] = ' ';
+                //next line turns uppercase to lowercase
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = (char) (move.charAt(2) + 32);
+            }
+        } else if (hasX && (move.length() >= 5) && (move.charAt(4) == 'Q'
+                    || move.charAt(4) == 'R' || move.charAt(4) == 'B'
+                    || move.charAt(4) == 'N')) {
+
+            // hxg1R or dxc8Q
+            if (white) {
+                chessBoard[arrayRowIndex + 1][move.charAt(0) - 97] = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = move.charAt(4);
+
+            } else { //black
+                chessBoard[arrayRowIndex - 1][move.charAt(0) - 97] = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = (char) (move.charAt(4) + 32);
+            }
+        } else if ((move.length() >= 4) && (move.contains("="))
+                    && (move.charAt(3) == 'Q' || move.charAt(3) == 'R'
+                    || move.charAt(3) == 'B'
+                    || move.charAt(3) == 'N')) {
+                        // b1=B
+            if (white) {
+                chessBoard[arrayRowIndex + 1]
+                    [move.charAt(0) - 97] = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = move.charAt(3);
+            } else { //black
+                chessBoard[arrayRowIndex - 1]
+                    [move.charAt(0) - 97] = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = (char) (move.charAt(3) + 32);
+            }
+        } else if (hasX && (move.length() >= 6) && (move.contains("="))
+                    && (move.charAt(5) == 'Q' || move.charAt(5) == 'R'
+                    || move.charAt(5) == 'B' || move.charAt(5) == 'N')) {
+                        // bxa1=B
+            if (white) {
+                chessBoard[arrayRowIndex + 1][move.charAt(0) - 97]
+                    = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = move.charAt(5);
+            } else { //black
+                chessBoard[arrayRowIndex - 1][move.charAt(0) - 97]
+                    = ' ';
+                chessBoard[arrayRowIndex][arrayColumnIndex]
+                    = (char) (move.charAt(5) + 32);
+            }
+
+        } else if (white) {
+            //to convert e4 or c5 to array index:
+                //[8 - chess row][column letter - 97]
+            //if a pawn captures, there will be an 'x':
+            if (move.charAt(1) == 'x') {
+                chessBoard[8 - Character.getNumericValue(move.charAt(3))]
+                        [move.charAt(2) - 97] = 'P';
+                chessBoard[8 - Character.getNumericValue((move.charAt(3) - 1))]
+                        [move.charAt(0) - 97] = ' ';
+            } else {   //no capture
+                chessBoard[8 - Character.getNumericValue(move.charAt(1))]
+                        [move.charAt(0) - 97] = 'P';
+                //checks if it is a two move pawn
+                if (chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(1) - 1))][move.charAt(0) - 97] == ' ') {
+                    chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(1) - 2))][move.charAt(0) - 97] = ' ';
+                } else {  //single move forward
+                    chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(1) - 1))][move.charAt(0) - 97] = ' ';
+                }
+            }
+        } else { //black move
+            if (move.charAt(1) == 'x') {
+                chessBoard[8 - Character.getNumericValue(
+                        move.charAt(3))][move.charAt(2) - 97] = 'p';
+                chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(3) + 1))][move.charAt(0) - 97] = ' ';
+                //only difference with black is +1^
+            } else {   //no capture
+                chessBoard[8 - Character.getNumericValue(move.charAt(1))]
+                        [move.charAt(0) - 97] = 'p';
+                //checks if it is a two move pawn
+                if (chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(1) + 1))][move.charAt(0) - 97] == ' ') {
+                    chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(1) + 2))][move.charAt(0) - 97] = ' ';
+                } else {  //single move forward
+                    chessBoard[8 - Character.getNumericValue(
+                        (move.charAt(1) + 1))][move.charAt(0) - 97] = ' ';
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+    //prints out the final position of the chess board in FEN notation.
+    public static String printFinalPosition(char[][] chessBoard) {
+        String fen = "";
+        for (int row = 0; row < chessBoard.length; row++) {
+            int columnCounter = 1;
+            for (int column = 0; column < chessBoard[row].length;
+                    column += columnCounter) {
+                columnCounter = 1;
+                if (chessBoard[row][column] == ' ') {
+                    columnCounter = 0;
+                    int emptyCounter = 0;
+                    for (int i = column; i < chessBoard[row].length; i++) {
+                        if (chessBoard[row][i] == ' ') {
+                            emptyCounter++;
+                            columnCounter++;
+                        } else {
+                            break;
+                        }
+                    }
+                    fen += emptyCounter;
+                } else {
+                    fen += chessBoard[row][column];
+                }
+            }
+            fen += "/";
+        }
+
+        return fen.substring(0, fen.length() - 1);
+    }
+
+
+
+
+
+
+
+    /**
+     * Reads the file named by path and returns its content as a String.
+     *
+     * @param path the relative or abolute path of the file to read
+     * @return a String containing the content of the file
+     */
+
+    public static String fileContent(String path) {
+        Path file = Paths.get(path);
+        StringBuilder sb = new StringBuilder();
+        try (BufferedReader reader = Files.newBufferedReader(file)) {
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                // Add the \n that's removed by readline()
+                sb.append(line + "\n");
+            }
+        } catch (IOException e) {
+            System.err.format("IOException: %s%n", e);
+            System.exit(1);
+        }
+        return sb.toString();
+    }
+}
