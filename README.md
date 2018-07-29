@@ -7,7 +7,7 @@ Please see PgnReader.java, the main class in this repo, for more details.
 
 # example usage
 
-given an INPUT file: "morphy-isouard-karl-1958.pgn",
+Given an **input** file "morphy-isouard-karl-1958.pgn",
    which contains the moves and tag values:
 
 ```
@@ -26,7 +26,7 @@ given an INPUT file: "morphy-isouard-karl-1958.pgn",
  java PgnReader morphy-isouard-karl-1958.pgn
  ```
 
-this program will OUTPUT:
+this program will **output**
 
 ```
     Event: A Night at the Opera
@@ -41,13 +41,13 @@ this program will OUTPUT:
 ```
 
  This program determines the final position of games that include:
-   Castling
-   Pawn Promotions
-   En Passant
-   Disambiguation of starting file or rank
-   Pinned Pieces and prevention against illegal moves
+   1. Castling
+   2. Pawn Promotions
+   3. En Passant
+   4. Disambiguation of starting file or rank
+   5. Pinned Pieces and prevention against illegal moves
    And more
    
  # why this was challenging
- The difficulty in programming this is that the PGN notation followed is half of what is needed to know how to move the piece: for example, an opening move may be "1. e4 e5", which represents White moving his king pawn forward two spaces, and Black moving his queen pawn forward two spaces. What is lacking from this notation is the square the piece originated from. It would be much easier to program pgn notation in the form of "1.e2-e4 e7-e5"
+ The difficulty in programming this is that the PGN notation followed is half of what is needed to know how to move the piece: for example, an opening move may be "1. e4 e5", which represents White moving his king pawn forward two spaces, and Black moving his queen pawn forward two spaces. What is lacking from this notation is the square the piece originated from. It would be much easier to program pgn notation in the form of "1.e2-e4 e7-e5", especially in cases that this has to account for like disambiguations and pinned pieces.
 
